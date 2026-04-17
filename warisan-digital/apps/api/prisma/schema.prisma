@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PENGGUNA (User) Models
+// ══════════════════════════════════════════════════════════════════════════
+
+model Pengguna {
+  id                 String    @id @default(uuid())
+  smartAccountAddr   String    @unique @map("smart_account_addr")
+  nikHash            String    @unique @map("nik_hash")
+  nikEncrypted       Bytes     @map("nik_encrypted")
+  namaEncrypted      Bytes     @map("nama_encrypted")
+  ihsNumberEncrypted Bytes?    @map("ihs_number_encrypted")
+  passkeyCredentialId String?  @map("passkey_credential_id")
+  passkeyPublicKey   Bytes?    @map("passkey_public_key")
+  kycStatus          KycStatus @default(PENDING) @map("kyc_status")
+  kycVerifiedAt      DateTime? @map("kyc_verified_at")
+  kycProvider        String?   @map("kyc_provider")
+  kycReferenceId     String?   @map("kyc_reference_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  wasiatList  Wasiat[]
+  dvoLogList  DvoLog[]
+
+  @@map("pengguna")
+  @@index([nikHash])
+  @@index([smartAccountAddr])
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WASIAT (Will) Models
+// ══════════════════════════════════════════════════════════════════════════
+
+model Wasiat {
+  id                     String      @id @default(uuid())
+  pewarisId              String      @map("pewaris_id")
+  wasiatHash             String      @map("wasiat_hash")
+  ipfsCid                String?     @map("ipfs_cid")
+  txHashDeploy           String?     @map("tx_hash_deploy")
+  blockNumberDeploy      BigInt?     @map("block_number_deploy")
+  status                 WasiatStatus @default(DRAFT)
+  wasiatDataEncrypted    Bytes?      @map("wasiat_data_encrypted")
+  wasiatDataIv           Bytes?      @map("wasiat_data_iv")
+  zkCircuitVersion       String?     @map("zk_circuit_version")
+  zkVerificationKeyHash  String?     @map("zk_verification_key_hash")
+  tteProvider            String?     @map("tte_provider")
+  tteReferenceId         String?     @map("tte_reference_id")
+  tteSignedAt            DateTime?   @map("tte_signed_at")
+  tteStatus              TteStatus   @default(PENDING) @map("tte_status")
+  jumlahAnakSah          Int         @default(0) @map("jumlah_anak_sah")
+  lpBps                  Int?        @map("lp_bps")
+  totalAhliWaris         Int         @default(0) @map("total_ahli_waris")
+  createdAt              DateTime    @default(now()) @map("created_at")
+  updatedAt              DateTime    @updatedAt @map("updated_at")
+  executedAt             DateTime?   @map("executed_at")
+  revokedAt              DateTime?   @map("revoked_at")
+
+  pewaris       Pengguna       @relation(fields: [pewarisId], references: [id])
+  ahliWarisList AhliWaris[]
+  asetList      AsetWasiat[]
+  tteLogs       TteLog[]
+  eksekusiLogs  EksekusiLog[]
+
+  @@map("wasiat")
+  @@index([pewarisId])
+  @@index([status])
+}
+
+enum WasiatStatus {
+  DRAFT
+  ACTIVE
+  REVOKED
+  EXECUTED
+  DISPUTED
+}
+
+enum TteStatus {
+  PENDING
+  SIGNED
+  EXPIRED
+  INVALID
+}
+
+model AhliWaris {
+  id                 String            @id @default(uuid())
+  wasiatId           String            @map("wasiat_id")
+  dompetAddr         String            @map("dompet_addr")
+  nikEncrypted       Bytes             @map("nik_encrypted")
+  namaEncrypted      Bytes             @map("nama_encrypted")
+  nikHash            String            @map("nik_hash")
+  hubunganKeluarga   HubunganKeluarga  @map("hubungan_keluarga")
+  persentaseBps      Int               @map("persentase_bps")
+  isLegitimePortie   Boolean           @default(false) @map("is_legitime_portie")
+  sudahKonfirmasi    Boolean           @default(false) @map("sudah_konfirmasi")
+  konfirmasiAt       DateTime?         @map("konfirmasi_at")
+  konfirmasiTxHash   String?           @map("konfirmasi_tx_hash")
+  jumlahDiterimaWei  Decimal?          @db.Decimal(65, 0) @map("jumlah_diterima_wei")
+  eksekusiTxHash     String?           @map("eksekusi_tx_hash")
+  urutan             Int               @default(0)
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  wasiat Wasiat @relation(fields: [wasiatId], references: [id], onDelete: Cascade)
+
+  @@map("ahli_waris")
+  @@index([wasiatId])
+  @@index([dompetAddr])
+}
+
+enum HubunganKeluarga {
+  ANAK_SAH
+  ANAK_TIDAK_SAH
+  ISTRI
+  SUAMI
+  ORANG_TUA
+  SAUDARA
+  CUCU
+  LAINNYA
+}
+
+model AsetWasiat {
+  id                String    @id @default(uuid())
+  wasiatId          String    @map("wasiat_id")
+  tokenAddr         String    @map("token_addr")
+  tokenSymbol       String    @map("token_symbol")
+  tokenDecimals     Int       @default(18) @map("token_decimals")
+  chainId           Int       @default(137) @map("chain_id")
+  saldoSnapshotWei  Decimal?  @db.Decimal(65, 0) @map("saldo_snapshot_wei")
+  saldoSnapshotUsd  Decimal?  @db.Decimal(20, 2) @map("saldo_snapshot_usd")
+  snapshotAt        DateTime? @map("snapshot_at")
+  tipeAset          TipeAset  @default(ERC20) @map("tipe_aset")
+  catatanEncrypted  Bytes?    @map("catatan_encrypted")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  wasiat Wasiat @relation(fields: [wasiatId], references: [id], onDelete: Cascade)
+
+  @@map("aset_wasiat")
+  @@index([wasiatId])
+}
+
+enum TipeAset {
+  NATIVE
+  ERC20
+  ERC721
+  ERC1155
+  RWA
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ORACLE & VERIFICATION Models
+// ══════════════════════════════════════════════════════════════════════════
+
+model DvoLog {
+  id                           String    @id @default(uuid())
+  pewarisId                    String    @map("pewaris_id")
+  chainlinkRequestId           String?   @map("chainlink_request_id")
+  chainlinkSubId               BigInt?   @map("chainlink_sub_id")
+  donId                        String?   @map("don_id")
+  status                       DvoStatus @default(PENDING)
+  satusehatResponseEncrypted   Bytes?    @map("satusehat_response_encrypted")
+  satusehatSmpkId              String?   @map("satusehat_smpk_id")
+  tanggalMeninggal             DateTime? @map("tanggal_meninggal")
+  dukcapilResponseEncrypted    Bytes?    @map("dukcapil_response_encrypted")
+  dukcapilStatusKependudukan   String?   @map("dukcapil_status_kependudukan")
+  zkProof                      Bytes?    @map("zk_proof")
+  publicInputHash              String?   @map("public_input_hash")
+  errorMessage                 String?   @map("error_message")
+  retryCount                   Int       @default(0) @map("retry_count")
+  requestedAt                  DateTime  @default(now()) @map("requested_at")
+  fulfilledAt                  DateTime? @map("fulfilled_at")
+  submitTxHash                 String?   @map("submit_tx_hash")
+
+  pewaris Pengguna @relation(fields: [pewarisId], references: [id])
+
+  @@map("dvo_log")
+  @@index([pewarisId])
+  @@index([status])
+}
+
+enum DvoStatus {
+  PENDING
+  FULFILLED
+  VALID
+  INVALID
+  ERROR
+  EXPIRED
+}
+
+model TteLog {
+  id                    String    @id @default(uuid())
+  wasiatId              String    @map("wasiat_id")
+  psreProvider          String    @map("psre_provider")
+  psreDocumentId        String    @map("psre_document_id")
+  psreRequestId         String?   @map("psre_request_id")
+  documentType          String    @default("RINGKASAN_WASIAT") @map("document_type")
+  ipfsCidSebelumTte     String?   @map("ipfs_cid_sebelum_tte")
+  ipfsCidSesudahTte     String?   @map("ipfs_cid_sesudah_tte")
+  pdfHashSha256         String?   @map("pdf_hash_sha256")
+  status                TteStatus @default(PENDING)
+  initiatedAt           DateTime  @default(now()) @map("initiated_at")
+  sentToPsreAt          DateTime? @map("sent_to_psre_at")
+  signedAt              DateTime? @map("signed_at")
+  expiresAt             DateTime? @map("expires_at")
+
+  wasiat Wasiat @relation(fields: [wasiatId], references: [id])
+
+  @@map("tte_log")
+  @@index([wasiatId])
+}
+
+model EksekusiLog {
+  id                String    @id @default(uuid())
+  wasiatId          String    @map("wasiat_id")
+  txHash            String    @unique @map("tx_hash")
+  blockNumber       BigInt?   @map("block_number")
+  gasUsed           BigInt?   @map("gas_used")
+  tokenAddr         String    @map("token_addr")
+  tokenSymbol       String?   @map("token_symbol")
+  dariAddr          String    @map("dari_addr")
+  keAddr            String    @map("ke_addr")
+  jumlahWei         Decimal   @db.Decimal(65, 0) @map("jumlah_wei")
+  isLegitimePortie  Boolean   @default(false) @map("is_legitime_portie")
+  status            String    @default("PENDING")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  confirmedAt       DateTime? @map("confirmed_at")
+
+  wasiat Wasiat @relation(fields: [wasiatId], references: [id])
+
+  @@map("eksekusi_log")
+  @@index([wasiatId])
+  @@index([txHash])
+}

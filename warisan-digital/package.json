@@ -1,0 +1,28 @@
+{
+  "name": "warisan-digital",
+  "version": "1.0.0",
+  "description": "Sistem Warisan Digital Terdesentralisasi - Production-Grade Blockchain Will System",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "contracts:compile": "npm --workspace=@warisan-digital/contracts run compile",
+    "contracts:test": "npm --workspace=@warisan-digital/contracts run test",
+    "contracts:deploy": "npm --workspace=@warisan-digital/contracts run deploy",
+    "circuits:compile": "npm --workspace=@warisan-digital/circuits run compile",
+    "db:migrate": "npm --workspace=@warisan-digital/api run db:migrate",
+    "db:generate": "npm --workspace=@warisan-digital/api run db:generate",
+    "db:push": "npm --workspace=@warisan-digital/api run db:push"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}
